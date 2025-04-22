@@ -100,32 +100,33 @@ class ChatGPTWorker(QThread):
         self.prompt = prompt
 
     def run(self):
-     self.prompt_output.emit(self.prompt)
-     try:
-         headers = {
-             "Authorization": f"Bearer {CHATGPT_API_KEY}",
-             "Content-Type": "application/json"
-         }
-         data = {
-             "model": "gpt-4.1-mini",
-             "messages": [
-                 {"role": "system", "content": "You are a helpful cybersecurity assistant."},
-                 {"role": "user", "content": self.prompt}
-             ]
-         }
-         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
-         result_json = response.json()
-         
-         if "choices" in result_json:
-             result = result_json["choices"][0]["message"]["content"]
-         elif "error" in result_json:
-             result = f"ChatGPT API error: {result_json['error']['message']}"
-         else:
-             result = "ChatGPT error: Unexpected response structure."
-     except Exception as e:
-         result = f"ChatGPT error: {e}"
+        self.prompt_output.emit(self.prompt)
+        try:
+            headers = {
+                "Authorization": f"Bearer {CHATGPT_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": "gpt-4.1-mini",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful cybersecurity assistant."},
+                    {"role": "user", "content": self.prompt}
+                ]
+            }
+            response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+            if response.status_code != 200:
+                raise Exception(f"API error {response.status_code}: {response.text}")
 
-     self.result.emit(result)
+            result_json = response.json()
+            if "choices" in result_json:
+                result = result_json["choices"][0]["message"]["content"]
+            else:
+                raise Exception("Unexpected response format from ChatGPT API")
+        except Exception as e:
+            result = f"ChatGPT error: {e}\nTraceback:\n{traceback.format_exc()}"
+
+        self.result.emit(result)
+
 
 # === VirusTotal ===
 class VirusTotalWorker(QThread):
