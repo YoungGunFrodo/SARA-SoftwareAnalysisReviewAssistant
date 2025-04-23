@@ -19,6 +19,8 @@ from docx.shared import Pt
 import io
 from datetime import datetime
 import json
+import traceback
+
 
 # Load config.json
 with open("config.json", "r") as f:
@@ -100,32 +102,45 @@ class ChatGPTWorker(QThread):
         self.prompt = prompt
 
     def run(self):
-        self.prompt_output.emit(self.prompt)
-        try:
-            headers = {
-                "Authorization": f"Bearer {CHATGPT_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            data = {
-                "model": "gpt-4.1-mini",
-                "messages": [
-                    {"role": "system", "content": "You are a helpful cybersecurity assistant."},
-                    {"role": "user", "content": self.prompt}
-                ]
-            }
-            response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
-            if response.status_code != 200:
-                raise Exception(f"API error {response.status_code}: {response.text}")
+     self.prompt_output.emit(self.prompt)
 
-            result_json = response.json()
-            if "choices" in result_json:
-                result = result_json["choices"][0]["message"]["content"]
-            else:
-                raise Exception("Unexpected response format from ChatGPT API")
-        except Exception as e:
-            result = f"ChatGPT error: {e}\nTraceback:\n{traceback.format_exc()}"
+     try:
+         headers = {
+             "Authorization": f"Bearer {CHATGPT_API_KEY}",
+             "Content-Type": "application/json"
+         }
+         data = {
+             "model": "gpt-4.1-mini",
+             "messages": [
+                 {"role": "system", "content": "You are a helpful cybersecurity assistant."},
+                 {"role": "user", "content": self.prompt}
+             ]
+         }
 
-        self.result.emit(result)
+         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+
+         if response.status_code != 200:
+             raise Exception(f"API error {response.status_code}: {response.text}")
+
+         result_json = response.json()
+         if "choices" in result_json:
+            result = result_json["choices"][0]["message"]["content"]
+         else:
+             raise Exception("Unexpected response format from ChatGPT API")
+
+     except Exception as e:
+         result = f"ChatGPT error: {e}\nTraceback:\n{traceback.format_exc()}"
+
+        # 🔍 Log the error to a persistent file on desktop for easy testing
+         try:
+             log_path = os.path.join(os.path.expanduser("~"), "Desktop", "chatgpt_error_log.txt")
+             with open(log_path, "a", encoding="utf-8") as f:
+                f.write(result + "\n\n")
+         except:
+             pass  # Fails silently if logging fails (to avoid breaking the app)
+
+     self.result.emit(result)
+
 
 
 # === VirusTotal ===
