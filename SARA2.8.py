@@ -37,6 +37,7 @@ CLIENT_SECRET = config["CLIENT_SECRET"]
 DRIVE_ID = config["DRIVE_ID"]
 EXCEL_FILE_ID = config["EXCEL_FILE_ID"]
 WORKSHEET_NAME = config["WORKSHEET_NAME"]
+CHATGPT_MODEL = "gpt-4.1-mini"
 
 # === Upload ===
 class SharePointUploader:
@@ -102,46 +103,59 @@ class ChatGPTWorker(QThread):
         self.prompt = prompt
 
     def run(self):
-     self.prompt_output.emit(self.prompt)
+        try:
+            # Show the prompt in your GUI (if the checkbox is enabled)
+            self.prompt_output.emit(self.prompt)
 
-     try:
-         headers = {
-             "Authorization": f"Bearer {CHATGPT_API_KEY}",
-             "Content-Type": "application/json"
-         }
-         data = {
-             "model": "gpt-4.1-mini",
-             "messages": [
-                 {"role": "system", "content": "You are a helpful cybersecurity assistant."},
-                 {"role": "user", "content": self.prompt}
-             ]
-         }
+            # Build headers & payload
+            headers = {
+                "Authorization": f"Bearer {CHATGPT_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": CHATGPT_MODEL,          # pulled from config.json
+                "messages": [
+                    {"role": "system", "content": "You are a helpful cybersecurity assistant."},
+                    {"role": "user", "content": self.prompt}
+                ]
+            }
 
-         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+            # Fire the request with a timeout so it never hangs forever
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=30
+            )
 
-         if response.status_code != 200:
-             raise Exception(f"API error {response.status_code}: {response.text}")
+            # HTTP‐level errors
+            if response.status_code != 200:
+                raise RuntimeError(f"API error {response.status_code}: {response.text}")
 
-         result_json = response.json()
-         if "choices" in result_json:
-            result = result_json["choices"][0]["message"]["content"]
-         else:
-             raise Exception("Unexpected response format from ChatGPT API")
+            # Parse JSON
+            body = response.json()
+            if "choices" not in body or not body["choices"]:
+                raise RuntimeError("Unexpected response format from ChatGPT API")
 
-     except Exception as e:
-         result = f"ChatGPT error: {e}\nTraceback:\n{traceback.format_exc()}"
+            # Success!
+            result = body["choices"][0]["message"]["content"]
 
-        # 🔍 Log the error to a persistent file on desktop for easy testing
-         try:
-             log_path = os.path.join(os.path.expanduser("~"), "Desktop", "chatgpt_error_log.txt")
-             with open(log_path, "a", encoding="utf-8") as f:
-                f.write(result + "\n\n")
-         except:
-             pass  # Fails silently if logging fails (to avoid breaking the app)
+        except Exception as e:
+            # Capture the full traceback
+            tb = traceback.format_exc()
+            result = f"ChatGPT error: {e}\n\n{tb}"
 
-     self.result.emit(result)
+            # Persist the error in your app’s own log folder
+            try:
+                log_dir = os.path.join(os.path.expanduser("~"), ".sara_logs")
+                os.makedirs(log_dir, exist_ok=True)
+                with open(os.path.join(log_dir, "chatgpt_errors.txt"), "a", encoding="utf-8") as f:
+                    f.write(f"{datetime.now().isoformat()} — {result}\n\n")
+            except Exception:
+                pass  # if logging fails, we still want to emit the error back to the UI
 
-
+        # Always emit *some* result, so the GUI thread wakes up
+        self.result.emit(result)
 
 # === VirusTotal ===
 class VirusTotalWorker(QThread):
