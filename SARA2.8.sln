@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35825.156 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "SARA2.8", "SARA2.8\SARA2.8.pyproj", "{8207BA19-04F4-4FCB-BB02-77F0318F8C3E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8207BA19-04F4-4FCB-BB02-77F0318F8C3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8207BA19-04F4-4FCB-BB02-77F0318F8C3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4EA116BD-A60A-4F57-A5CE-8C9463D83043}
+	EndGlobalSection
+EndGlobal
